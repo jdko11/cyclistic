@@ -1,7 +1,5 @@
 # cyclistic
-case study for google data analytics certification
-
-the Cyclistic bike-share analysis case study.  
+the Cyclistic bike-share analysis case study is for google data analytics certification.
 
 The Cyclistic Bike-Share Marketing Analysis is the first case study of Google’s Data Analytics Professional Certificate program. 
 The Cyclistic is a fictional company. 
