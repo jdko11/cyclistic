@@ -1,0 +1,806 @@
+---
+title: "Cyclistic Project Log"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+# Project Overview
+
+## Company: Cyclistic 
++ They are based in Chicago, since 2016
++ Their bike share program features 692 docking stations and 5824 bikes with Geo-tracked feature
+  + Usage of traditional bikes is 92%, with the assistive options: 8%
+    + Reclining bikes, Hand tricycles, Two-wheeled bike
++ The service usage: 70% to commute to work each day, 30% for leisure
+
+## Current Marketing Strategy
++ Building general awareness to broad consumer segment by appealing flexibility of pricing plan
+  + Casual riders: Single ride passes, full-day passes
+  + Cyclistic members: annual membership
+  
+## Stakeholders
++ Executive team: They are detail oriented and will approve recommended plan
++ Director of Marketing: Lily Moreno
+  + She is responsible for development of campaigns and initiatives to promote the bike-share program that may include email, social media, and other channels
+  + She believes that maximizing the number of annual members will be key to future growth because casual riders are already aware of the cyclistic program and have chosen Cyclistic for their mobility needs
++ Analytics Team: Responsible for collecting, analyzing, and reporting data that helps guide the marketing strategy
++ Finance Analysts: Concluded that annual members are much more profitable than casual riders
+
+## Goal of This Project
++ Design the marketing strategies aimed to convert casual riders into annual members
+  + Key guiding questions:
+    1. How do annual members and casual riders use Cyclistic bikes differently?
+    2. Why would casual riders buy Cyclistic annual memberships?
+    3. How can Cyclistic use digital media to influence casual riders to become members?
++ This Analysis is the a part of the 3 analysis series which will help answer the first key guiding questions
+
+# Analysis Process
+
+## 1. A Clear Statement of the Business Task
++ Identify key difference of trend in service usage between the casual riders and the annual members in order to design the marketing campaign that will encourage casual riders to get the annual membership
+
+## 2. A Description of All Data Sources Used
+### Download data and store it appropriately
+  + The data was located on the company's cloud storage (Amazon Web Services)
+    + https://divvy-tripdata.s3.amazonaws.com/index.html
+    + The data was downloaded and stored in the locally safe location
+### Identify how it's organized
+
+```{r}
+###########################################
+# Install required packages
+# tidyverse for data import and wrangling
+# lubridate for date functions
+###########################################
+
+library(tidyverse) # tidyverse helps wrangle data
+library(lubridate) # lubridate helps wrangle date attributes
+library(ggplot2)  # ggplot2 helps visualize data
+
+# getwd() displays your working directory
+# setwd()  sets working directory to simplify calls to data
+setwd("C:/Workstations/Cyclistics/tripdata csv")  
+
+#==========================================
+# STEP 1: COLLECT DATA
+#==========================================
+#Read 12 month datasets (csv file) here
+tripdata_202008 <-read_csv("202008-divvy-tripdata.csv")
+tripdata_202009 <-read_csv("202009-divvy-tripdata.csv")
+tripdata_202010 <-read_csv("202010-divvy-tripdata.csv")
+tripdata_202011 <-read_csv("202011-divvy-tripdata.csv")
+tripdata_202012 <-read_csv("202012-divvy-tripdata.csv")
+tripdata_202101 <-read_csv("202101-divvy-tripdata.csv")
+tripdata_202102 <-read_csv("202102-divvy-tripdata.csv")
+tripdata_202103 <-read_csv("202103-divvy-tripdata.csv")
+tripdata_202104 <-read_csv("202104-divvy-tripdata.csv")
+tripdata_202105 <-read_csv("202105-divvy-tripdata.csv")
+tripdata_202106 <-read_csv("202106-divvy-tripdata.csv")
+tripdata_202107 <-read_csv("202107-divvy-tripdata.csv")
+```
+  + The dataset consists of 12 '.csv' files representing each month from August 2020 to July 2021
+  + Each of those trip data files consist of 13 columns with various data types indicating the aspects of each ride activity 
+    + Names of columns are:
+      1. ride_id: unique id representing each trip record
+      2. rideable_type: indicates which bike type used for the trip 
+      3. started_at: indicates trip start time
+      4. ended_at: indicates trip end time
+      5. start_station_name: indicates trip start station name
+      6. start_station_id: indicates trip start station id
+      7. end_station_name: indicates trip end station name
+      8. end_station_id: indicates trip end station id
+      9. start_lat: indicates trip start latitude 
+      10. start_lng: indicates trip start longitude
+      11. end_lat: indicates trip end latitude 
+      12. end_lng: indicates trip end longitude     
+      13. member_casual: indicates the trip was made by an annual member or a casual user
+    + All columns of 12 trip dataset have the matching column name
+      + No need to rename columns
+
+```{r}
+# Inspect the dataframes and look for incongruencies
+str(tripdata_202008)
+str(tripdata_202009)
+str(tripdata_202010)
+str(tripdata_202011)
+str(tripdata_202012)
+str(tripdata_202101)
+str(tripdata_202102)
+str(tripdata_202103)
+str(tripdata_202104)
+str(tripdata_202105)
+str(tripdata_202106)
+str(tripdata_202107)
+
+```
+### Determine the credibility of the data (ROCCC)
+  + The data follows ROCCC approach
+  + Bias: There seem to be no noticeable bias issues in this data
+  + Credibility: The data has been made available by Motivate International Inc. under the license by Divvy
+    + https://www.divvybikes.com/data-license-agreement
+  + However, the dataset has a limitation since there are non personally identifiable information
+    + Therefore, we won't be able to connect pass purchases to credit card numbers to determine if casual riders live in the Cyclistic service area or if they have purchased multiple single passes
+    + Also, it will be hard to verify or track how many times a single user uses the service or if such one is an annual member or a casual user
+    + There are some data with null value or inconsistency in the data format
+
+### Sort and filter the data
+  + start_station_id and end_station_id for tripdata_202008, tripdata_202009, tripdata_202010, tripdata_202011 are double() but others are character()
+
+```{r}
+# Convert start_station_id and end_station_id to character 
+# so that datasets can be stacked correctly
+
+tripdata_202008 <- mutate(tripdata_202008, start_station_id = as.character(start_station_id),
+                          end_station_id = as.character(end_station_id))
+tripdata_202009 <- mutate(tripdata_202009, start_station_id = as.character(start_station_id),
+                          end_station_id = as.character(end_station_id))
+tripdata_202010 <- mutate(tripdata_202010, start_station_id = as.character(start_station_id),
+                          end_station_id = as.character(end_station_id))
+tripdata_202011 <- mutate(tripdata_202011, start_station_id = as.character(start_station_id),
+                          end_station_id = as.character(end_station_id))
+
+# Confirm the data type for start_station_id, end_station_id changed to char
+str(tripdata_202008)
+str(tripdata_202009)
+str(tripdata_202010)
+str(tripdata_202011)
+```
+```{r}
+# Stack individual data frames into one big data frame
+all_trips <- bind_rows(tripdata_202008, tripdata_202009, tripdata_202010,
+                       tripdata_202011, tripdata_202012, tripdata_202101,
+                       tripdata_202102, tripdata_202103, tripdata_202104,
+                       tripdata_202105, tripdata_202106, tripdata_202107)
+
+# Inspect the new table that has been created
+
+# Dimensions of the data frame?
+dim(all_trips)  
+```
+```{r}
+# See the first 6 rows of data frame. 
+head(all_trips)
+
+```
+```{r}
+# See the last 6 rows of the data
+tail(all_trips)
+
+```
+```{r}
+# See list of columns and data types 
+str(all_trips)
+
+```
+```{r}
+# Statistical summary of data. Mainly for numerics
+summary(all_trips)
+```
+
+## 3. Documentation of Any Cleaning or Manipulation of Data
+
+### 1) Add some additional columns of data, such as day, month year from started_at
+```{r}
+# all_trips$date <- as.Date(all_trips$started_at)
+all_trips$date <- as.Date(all_trips$started_at) #The default format is yyyy-mm-dd
+all_trips$hour <- format(all_trips$started_at, "%H")  
+all_trips$day <- format(as.Date(all_trips$date), "%d")
+all_trips$year_month <- format(as.Date(all_trips$date), "%Y_%m")
+all_trips$day_of_week <- format(as.Date(all_trips$date), "%A")
+
+# Verify newly added columns
+str(all_trips)
+```
+### 2) calculate ride_length from started_at and ended_at in min
+```{r}
+all_trips$ride_length_min <- round(as.numeric(difftime(all_trips$ended_at, 
+                                                   all_trips$started_at, 
+                                                   units = "mins")), digits = 2)
+
+# Verify newly added columns
+str(all_trips)
+```
+### 3) Remove all duplicate ride_id
+```{r}
+glimpse(all_trips)
+all_trips <- distinct(all_trips, ride_id, .keep_all = TRUE)
+glimpse(all_trips)
+```
+
+  + Removed 209. Remaining rows: 4,730,872
+
+### 4) Remove unnecessary columns 
+```{r}
+#  - end_station_id, end_station_name, end_lat, end_lng, start_station_id, start_station_name, start_lat, start_lng, ride_id,started_at, ended_at
+all_trips <- all_trips %>%
+  select(-c(end_station_id, end_station_name, end_lat, end_lng,
+            start_station_id, start_station_name, start_lat, start_lng,
+            ride_id,started_at, ended_at))
+
+# Verify data set after the removal
+str(all_trips)
+```
+
+### 5) Make sure to remove any NA rows
+```{r}
+all_trips_clean <- drop_na(all_trips)
+
+nrow(all_trips)
+```
+  + There were no NA rows left to be removed
+  
+### 6) Remove negative ride length or over 1440min (24 hours)
+```{r}
+all_trips_v2 <- all_trips_clean[!(all_trips_clean$ride_length_min<0 | 
+                                 all_trips_clean$ride_length_min>1440),]
+nrow(all_trips_v2) 
+```
+  + Removed 11,395. Dataset left with 4,719,477 rows
+  
+
+## 4. Conduct Analysis and Supporting Visualizations
+
+
+```{r}
+# First, perform general summary of the ride_length_min
+
+#mean(all_trips_v2$ride_length_min)     #straight avg (total ride length / rides)
+#median(all_trips_v2$ride_length_min)   #midpoint number in the ascending array of ride lengths
+#max(all_trips_v2$ride_length_min)      #longest ride - about 24 hours
+#min(all_trips_v2$ride_length_min)      #shortest ride  - 0
+summary(all_trips_v2$ride_length_min)
+
+```
+
+### Service Usage - Overall Proportion
+
+```{r}
+# Calculate usage proportion for the casual riders' trip duration in %
+agg_sum_total <- sum(all_trips_v2$ride_length_min)
+agg_sum <- aggregate(all_trips_v2$ride_length_min~all_trips_v2$member_casual,
+          FUN = sum) 
+agg_sum_casual <- round(agg_sum[1,2] / agg_sum_total, 4) * 100  
+agg_sum_casual
+```
+  + Casual riders make up 62.83% of the sum of total trip duration
+  
+```{r}
+# Calculate usage proportion for the Annual members' trip duration in %
+agg_sum_member <- round(agg_sum[2,2] / agg_sum_total, 4) * 100  
+agg_sum_member
+```
+
+  + Annual members make up 32.17% of the sum of total trip duration
+  
+```{r}
+
+# setup plot
+plot1_df <- data.frame(x_tmp=c("casual", "member"), 
+                        y_tmp=c(agg_sum_casual, agg_sum_member))
+
+plot1 <- ggplot(plot1_df, aes(x= x_tmp, y= y_tmp, fill=x_tmp)) + 
+  geom_col(position = "dodge") 
+  
+# format title and subtitle
+plot1 <-  plot1 + labs(title = "<Cyclistic: Trip Duration - Proportion(%)>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "User Type", y = "Trip Duration(Min)")
+plot1 <- plot1 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5)) 
+
+
+# format legend
+plot1 <- plot1 + scale_fill_manual(name="User Type",
+                                      breaks = c("casual", "member"),
+                                      labels= c("Casual Riders (62.83%)", "Annual Members (37.17%)" ),
+                                      values=c("#3399FF", "#FF9933" ))
+
+print(plot1)
+
+```
+
+  + **Analysis: Trip duration for casual riders is *almost twice more* than annual members.** 
+
+```{r}
+agg_min <- aggregate(all_trips_v2$ride_length_min~all_trips_v2$member_casual, FUN = min)
+agg_min
+
+```
+  + agg_min does not hold any meaningful data
+  
+```{r}
+agg_max <- aggregate(all_trips_v2$ride_length_min~all_trips_v2$member_casual, FUN = max)
+agg_max
+
+```
+  + agg_max also does not hold any meaningful data
+  
+```{r}
+agg_avg <- aggregate(all_trips_v2$ride_length_min~all_trips_v2$member_casual, FUN = mean)
+agg_avg
+```
+```{r}
+plot2 <- all_trips_v2 %>%
+  group_by(member_casual) %>%
+  summarise(average_duration = mean(ride_length_min)) %>%
+  arrange(member_casual) %>%
+  ggplot(aes(x = member_casual, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+
+# format title and subtitle
+plot2 <-  plot2 + labs(title = "<Cyclistic: AVG Trip Duration in Min>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "User Type", y = "AVG Trip Duration(Min)")
+plot2 <- plot2 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5)) 
+
+
+# format legend
+plot2 <- plot2 + scale_fill_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders (~30min)","Annual Members (~14min)"),
+                                      values=c("#3399FF","#FF9933"))
+
+print(plot2)
+```
+
+  + **Analysis: Average trip duration for casual riders is also about *twice more* than annual members**
+  
+```{r}
+agg_count <- aggregate(all_trips_v2$ride_length_min~all_trips_v2$member_casual, FUN = length)
+agg_count
+```
+```{r}
+# Calculate % of the trip count for casual riders
+agg_trip_count_casual <- agg_count[1,2] / (agg_count[1,2] + agg_count[2,2]) 
+agg_trip_count_casual <- round(agg_trip_count_casual * 100, 2)
+agg_trip_count_casual
+```
+  + casual riders make up 44.42% of the total trip count
+
+```{r}
+# Calculate % of the trip count for annual members
+agg_trip_count_member <- agg_count[2,2] / (agg_count[1,2] + agg_count[2,2]) 
+agg_trip_count_member <- round(agg_trip_count_member * 100, 2)
+agg_trip_count_member
+```
+  + Annual members make up 55.58% of the total trip count
+
+```{r}
+# Visualize
+
+plot3_df <- data.frame(x_tmp_cnt=c("casual", "member"), 
+                        y_tmp_cnt=c(agg_trip_count_casual, agg_trip_count_member))
+
+plot3 <- ggplot(plot3_df, aes(x= x_tmp_cnt, y= y_tmp_cnt, fill=x_tmp_cnt)) + 
+  geom_col(position = "dodge") 
+  
+
+# format title and subtitle
+plot3 <-  plot3 + labs(title = "<Cyclistic: Trip Count - Proportion (%)>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "User Type", y = "Trip Count (%)")
+plot3 <- plot3 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5)) 
+
+
+# format legend
+plot3 <- plot3 + scale_fill_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders (44.42%)","Annual Members (55.58%)"),
+                                      values=c("#3399FF","#FF9933"))
+
+print(plot3)
+
+```
+
+  + **Analysis: Although trip duration for casual riders are *more* than annual members, but the actual trip count is *less*!** 
+  
+### Service Usage - Monthly Trend
+
+
+```{r}
+plot4_df <- all_trips_v2 %>% 
+  group_by(member_casual, year_month) %>% 
+  summarise(trip_duration_sum = sum(ride_length_min))
+plot4_df
+```
+
+
+```{r}
+# Visualize
+plot4 <- ggplot(plot4_df, aes(x=year_month, y=trip_duration_sum, 
+                              group=member_casual)) + 
+  geom_line(aes(color=member_casual), size=1.2)
+
+# format title and subtitle
+plot4 <-  plot4 + labs(title = "<Cyclistic: Trip Duration - Monthly Trend>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "Year_Month", y = "Trip Duration (Min)")
+plot4 <- plot4 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot4 <- plot4 + scale_color_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders","Annual Members"),
+                                      values=c("#3399FF","#FF9933"))
+
+plot4
+
+```
+
+  + **Analysis: Trip duration start to decline drastically in Oct and hit lowest in Dec, start to pick up again in Feb. As expected, bike usage in Chicago during *the winter season is the lowest. the summer season is the highest*!**
+
+
+```{r}
+# Calculate monthly AVG trip duration
+plot5_df <- all_trips_v2 %>% 
+  group_by(member_casual, year_month) %>% 
+  summarise(trip_duration_avg = mean(ride_length_min))
+plot5_df[3] <- round(plot5_df[3],2)
+plot5_df
+```
+```{r}
+# Visualize
+plot5 <- ggplot(plot5_df, aes(x=year_month, y=trip_duration_avg, 
+                              group=member_casual)) + 
+  geom_line(aes(color=member_casual), size=1.2)
+
+# format title and subtitle
+plot5 <-  plot5 + labs(title = "<Cyclistic: AVG Trip Duration - Monthly Trend>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "Year_Month", y = "AVG Trip Duration (Min)")
+plot5 <- plot5 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot5 <- plot5 + scale_color_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders","Annual Members"),
+                                      values=c("#3399FF","#FF9933"))
+
+plot5
+
+```
+
+  + **Analysis: AVG trip duration for casual riders *constantly changes* from 22min to 37min. However, AVG trip duration for annual members is *relatively stable* around 14min**
+
+
+```{r}
+# Calculate monthly trip count
+plot6_df <- all_trips_v2 %>% 
+  group_by(member_casual, year_month) %>% 
+  summarise(trip_duration_count = length(ride_length_min))
+plot6_df
+```
+```{r}
+# Visualize
+plot6 <- ggplot(plot6_df, aes(x=year_month, y=trip_duration_count, 
+                              group=member_casual)) + 
+  geom_line(aes(color=member_casual), size=1.2)
+
+# format title and subtitle
+plot6 <-  plot6 + labs(title = "<Cyclistic: Trip Count - Monthly Trend>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "Year_Month", y = "Trip Count (#)")
+plot6 <- plot6 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot6 <- plot6 + scale_color_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders","Annual Members"),
+                                      values=c("#3399FF","#FF9933"))
+
+plot6
+
+```
+
+  + **Analysis: Trip count for annual members is *almost always higher* than casual riders. This indicate, *annual members uses the service more frequently* even if trip duration for each ride may be only around 14min avg. **
+
+
+### Service Usage - Monthly Trend by Bike Type
+
+```{r}
+plot7_df <- all_trips_v2 %>% 
+  group_by(rideable_type, year_month) %>% 
+  summarise(trip_duration_sum_biketype = sum(ride_length_min))
+plot7_df
+```
+```{r}
+# Visualize
+plot7 <- ggplot(plot7_df, aes(x=year_month, y=trip_duration_sum_biketype, 
+                              group=rideable_type)) + 
+  geom_line(aes(color=rideable_type), size=1.2)
+
+# format title and subtitle
+plot7 <-  plot7 + labs(title = "<Cyclistic: Trip Duration by Bike Type - Monthly Trend>",
+       subtitle = "For Both Casual Riders & Annual Members",
+       x = "Year_Month", y = "Trip Duration (Min)")
+plot7 <- plot7 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot7 <- plot7 + scale_color_manual(name="Bike Type",
+                                      breaks = c("classic_bike","docked_bike", "electric_bike"),
+                                      labels= c("Classic Bike","Docked Bike", "Electric Bike"),
+                                      values=c("#FF3333","#CC00FF", "#66CC00"))
+
+plot7
+```
+
+  + **Analysis: *Classic bike is the most favored* bike type!**
+
+```{r}
+# See if casual riders also favors classic bike
+
+plot8_df <- all_trips_v2 %>% 
+  group_by(rideable_type, year_month, member_casual) %>% 
+  filter(member_casual == "casual") %>%
+  summarise(trip_duration_sum_biketype = sum(ride_length_min))
+plot8_df
+```
+
+```{r}
+# Visualize
+plot8 <- ggplot(plot8_df, aes(x=year_month, y=trip_duration_sum_biketype, 
+                              group=rideable_type)) + 
+  geom_line(aes(color=rideable_type), size=1.2)
+
+# format title and subtitle
+plot8 <-  plot8 + labs(title = "<Cyclistic: Trip Duration by Bike Type - Monthly Trend>",
+       subtitle = "For Casual Riders",
+       x = "Year_Month", y = "Trip Duration (Min)")
+plot8 <- plot8 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot8 <- plot8 + scale_color_manual(name="Bike Type",
+                                      breaks = c("classic_bike","docked_bike", "electric_bike"),
+                                      labels= c("Classic Bike","Docked Bike", "Electric Bike"),
+                                      values=c("#FF3333","#CC00FF", "#66CC00"))
+
+plot8
+```
+
+  + **Analysis: Yes! *Casual riders also favor Classic bike* type! **
+  
+```{r}
+# See if annual riders also favors classic bike
+
+plot9_df <- all_trips_v2 %>% 
+  group_by(rideable_type, year_month, member_casual) %>% 
+  filter(member_casual == "member") %>%
+  summarise(trip_duration_sum_biketype = sum(ride_length_min))
+plot9_df
+```
+```{r}
+# Visualize
+plot9 <- ggplot(plot9_df, aes(x=year_month, y=trip_duration_sum_biketype, 
+                              group=rideable_type)) + 
+  geom_line(aes(color=rideable_type), size=1.2)
+
+# format title and subtitle
+plot9 <-  plot9 + labs(title = "<Cyclistic: Trip Duration by Bike Type - Monthly Trend>",
+       subtitle = "For Annual Members",
+       x = "Year_Month", y = "Trip Duration (Min)")
+plot9 <- plot9 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot9 <- plot9 + scale_color_manual(name="Bike Type",
+                                      breaks = c("classic_bike","docked_bike", "electric_bike"),
+                                      labels= c("Classic Bike","Docked Bike", "Electric Bike"),
+                                      values=c("#FF3333","#CC00FF", "#66CC00"))
+
+plot9
+```
+
+  + **Analysis: *Annual members clearly favor Classic-bike* type! and *completely stopped using Docked-bike*! **
+  
+  
+```{r}
+# is the classic bike still the favorite from the perspective of trip-count?
+plot10_df <- all_trips_v2 %>% 
+  group_by(rideable_type, year_month) %>% 
+  summarise(trip_duration_count_biketype = length(ride_length_min))
+plot10_df
+```
+```{r}
+# Visualize
+plot10 <- ggplot(plot10_df, aes(x=year_month, y=trip_duration_count_biketype, 
+                              group=rideable_type)) + 
+  geom_line(aes(color=rideable_type), size=1.2)
+
+# format title and subtitle
+plot10 <-  plot10 + labs(title = "<Cyclistic: Trip Count by Bike Type - Monthly Trend>",
+       subtitle = "For Both Casual Riders & Annual Members",
+       x = "Year_Month", y = "Trip Count (#)")
+plot10 <- plot10 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot10 <- plot10 + scale_color_manual(name="Bike Type",
+                                      breaks = c("classic_bike","docked_bike", "electric_bike"),
+                                      labels= c("Classic Bike","Docked Bike", "Electric Bike"),
+                                      values=c("#FF3333","#CC00FF", "#66CC00"))
+
+plot10
+```
+
+  + **Analysis: Yes! The *Classic-bike is the favorite bike type* for both user types!**
+
+
+### Service Usage - Days of Week Trend
+
+```{r}
+#Rearrange the days of the week in order.
+all_trips_v2$day_of_week <- ordered(all_trips_v2$day_of_week,
+                                    levels=c("Sunday", "Monday", "Tuesday",
+                                             "Wednesday", "Thursday", "Friday",
+                                             "Saturday"))
+  
+plot11_df <- all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>% 
+  summarise(trip_duration_sum = sum(ride_length_min))
+plot11_df
+
+
+
+```
+```{r}
+# Visualize
+plot11 <- ggplot(plot11_df, aes(x=day_of_week, y=trip_duration_sum, 
+                              group=member_casual)) + 
+  geom_line(aes(color=member_casual), size=1.2)
+
+# format title and subtitle
+plot11 <-  plot11 + labs(title = "<Cyclistic: Trip Duration - Days of Week Trend>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "Year_Month", y = "Trip Duration (Min)")
+plot11 <- plot11 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot11 <- plot11 + scale_color_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders","Annual Members"),
+                                      values=c("#3399FF","#FF9933"))
+
+plot11
+
+```
+
+  + **Analysis: Casual riders clearly use bike on the *weekends.* This may indicate, *casual riders use bike for leisure* **
+
+```{r}
+plot12_df <- all_trips_v2 %>%
+  group_by(member_casual, day_of_week) %>% 
+  summarise(trip_duration_count = length(ride_length_min))
+plot12_df
+
+```
+```{r}
+# Visualize
+plot12 <- ggplot(plot12_df, aes(x=day_of_week, y=trip_duration_count, 
+                              group=member_casual)) + 
+  geom_line(aes(color=member_casual), size=1.2)
+
+# format title and subtitle
+plot12 <-  plot12 + labs(title = "<Cyclistic: Trip Count - Days of Week Trend>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "Year_Month", y = "Trip Count (#)")
+plot12 <- plot12 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot12 <- plot12 + scale_color_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders","Annual Members"),
+                                      values=c("#3399FF","#FF9933"))
+
+plot12
+
+```
+
+  + **Analysis: Annual Members clearly uses bikes during the *weekdays*. This may indicate, annual members *uses the service to commute* to and from work or school! **
+
+
+### Service Usage - Hourly Trend
+
+```{r}
+plot13_df <- all_trips_v2 %>%
+  group_by(member_casual, hour) %>% 
+  summarise(trip_duration_count = length(ride_length_min))
+plot13_df
+
+```
+```{r}
+# Visualize
+plot13 <- ggplot(plot13_df, aes(x=hour, y=trip_duration_count, 
+                              group=member_casual)) + 
+  geom_line(aes(color=member_casual), size=1.2)
+
+# format title and subtitle
+plot13 <-  plot13 + labs(title = "<Cyclistic: Trip Count - Hourly Trend>",
+       subtitle = "Casual Riders VS Annual Members",
+       x = "Time of Day (24-hour notation)", y = "Trip Count (#)")
+plot13 <- plot13 + theme(plot.title = element_text(size = 15, hjust = 0.5),
+                       plot.subtitle = element_text(hjust = 0.5),
+                       axis.text.x = element_text(size=6)) 
+
+
+# format legend
+plot13 <- plot13 + scale_color_manual(name="User Type",
+                                      breaks = c("casual","member"),
+                                      labels= c("Casual Riders","Annual Members"),
+                                      values=c("#3399FF","#FF9933"))
+
+plot13
+
+```
+
+
+  + **Analysis: *Annual members make three hills from 5am to 9am, from 11am to 2pm, and from 3pm to 6pm*. Afternoon hill is bigger than the one in the morning. This may indicate that *annual members use bike more to commute from work or school to home*. However, casual riders only make one big hill in the afternoon which may indicate that *casual riders prefer to use bike in the afternoon for leisure*. **
+  
+  
+
+## 5. Summary of the Analysis
+
+### On-Season and Off-Season
+
+  + The **preseason** starts in *February*
+    + The preseaon is the *best time* to begin the marketing campaign
+  + The **on-season** starts in *April* 
+  + The **off-season** starts in *October* 
+
+### Analysis on Casual Riders
+
+  + **Casual riders** make up *62.83%* of the total trip duration. Avg trip duration is about *30 min* per ride. However, they *only make up 44.42%* of the total trip count. The **service usage declines in Autumn and hits the lowest during the winter season**, which is expected in the city of Chicago. The service usage **picks up in Feb and hit the highest in July**. Ever since the introduction of the **classic bike**, casual riders tend to use it than docked bike. The usage of the electric bike is the second favored bike type consistently. Also, casual riders tend to use the service on the **weekends** which may indicate they ride bike **for leisure in the afternoon**!
+
+### Analysis on Annual Members
+
+  + **Annual members** make up only *37.17%* of the total trip duration. Avg trip duration is about *14 min* per ride. However, they make up *55.58%* of the total trip count, which indicate that annual members **use the service more frequently than casual riders**. The **service usage declines in Autumn and hits the lowest during the winder season**, which is expected in the city of Chicago.  The service usage **picks up in Feb and hit the highest in June**. Even for annual members, they prefer to use the bike during the **summer season** as well.  Ever sine the introduction of the **classic bike**, annual members favored it over other bike types.  They completely stopped using the docked-bike. Contrast to casual riders, service usage of the annual members is consistent throughout the week but **tend to have higher usage during the week**.  This may indicate annual members tend to use the service **to commute from work or from school where the distance is within 15min by bike**. They tend to use bike *from 5am to 9am, from 11am to 2pm, and from 3pm to 6pm*. They seem to **use the service more in the afternoon to commute** after work or school*. 
+
+
+# Conclusion of the Analysis 
+
+## Top 3 Recommendations Based on the Analysis
+
+### Recommendation 1: Targeting AVG Trip Duration of Casual Riders
+  + Casual riders make up *62.83%* of the total trip duration and ride for about **30min** per ride. 
+    + Therefore, if there is an **annual membership have merits for *leisure riders* that will benefit those who *ride over 30 minutes per ride* will appeal many of the casual riders to get the membership**.    
+  
+### Recommendation 2: Targeting Weekend Casual Riders
+  + Casual riders tend to ride bike in the afternoon **on the weekend**. 
+    + Therefore, if there is an **annual membership have merits for *leisure riders* that will benefit *the weekend riders* will appeal many of the casual riders to get the membership**.   
+  
+### Recommendation 3: Targeting Favorite Bike Type of Casual Riders
+  + Casual riders favor classic bike. 
+    + Therefore, if there is an **annual *membership have merits for leisure riders* that will benefit the riders who use *classic bike* appeal to many of the casual riders to get the membership**.
+
+    
+  
+
